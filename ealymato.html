@@ -127,7 +127,7 @@ canvas
 		var red = 0;
 		if ( S.endIsNear > 0 )
 		{
-			red += Math.cos( S.wave / 3 ) * 80+80;
+			red += Math.cos( S.wave / 3 ) * 120+80;
 		}
 
 		c.fillStyle = 'rgba(' + red + ',0,0,.1)';
@@ -216,7 +216,12 @@ canvas
 					S.maxSize += .1;
 					if ( e.type == "good" )
 					{
-						S.score += S.boost * S.health * (S.energy / 100);
+						S.addScore = S.boost * S.health * (S.energy / 100);
+						S.score += S.addScore
+						if ( Math.floor(S.addScore) > 0 )
+						{
+							new FlashScore ( Math.floor(S.addScore), S.x, S.y, 0, 255, 0);
+						}
 						S.health = 100;
 						S.endIsNear = 0;
 
@@ -225,13 +230,51 @@ canvas
 							S.invert = -1;
 						}
 					}
-					if ( e.type == "bad" ) { S.health -= e.s; S.score -= 100; }
+					if ( e.type == "bad" )
+					{
+						S.health -= e.s; S.score -= 100;
+						new FlashScore ( -100, S.x, S.y, 255, 0, 0);
+					}
 
 					if ( e.type == "energy" ) { S.energy = S.maxEnergy; }
 				}
 			}
 
 		});
+
+
+		c.font = "18px consolas";
+
+		S.flashScores.forEach(e =>
+		{
+			if ( e.dead == 0 )
+			{
+				e.a -= 1;
+				e.y -= 1;
+
+				if ( e.a < 0 )
+				{
+					e.a = 1;
+					e.dead = 1;
+				}
+
+				if ( e.s < 0 )
+				{
+					c.fillStyle = 'rgba(' + e.r + ',' + e.g + ',' + e.b + ',' + e.a/100 + ')';
+					c.fillText( e.s, e.x, e.y );
+				}
+				else
+				{
+					c.fillStyle = 'rgba(' + e.r + ',' + e.g + ',' + e.b + ',' + e.a/100 + ')';
+					c.fillText( "+"+e.s, e.x, e.y );
+
+				}
+				
+			}
+		});
+
+		c.font = "32px consolas";
+
 
 		--S.spawnInterval;
 		if ( S.spawnInterval < 0 )
@@ -240,7 +283,7 @@ canvas
 			S.spawnInterval = S.spawnRate;
 		}
 
-//		D.innerText = JSON.stringify( S.invertTime );
+//		D.innerText = JSON.stringify( S.flashScores );
 	}
 
 	function Snaek()
@@ -273,6 +316,8 @@ canvas
 		this.spawns = [];
 		this.spawnRate = 180;
 		this.spawnInterval = this.spawnRate;
+
+		this.flashScores = [];
 
 		for ( var n=0; n<this.blength; ++n )
 		{
@@ -329,8 +374,8 @@ canvas
 		{
 			this.x = Math.floor(Math.random()*640);
 			this.y = Math.floor(Math.random()*640);
-			this.g = Math.floor(Math.random()*150)+55;
-			this.b = Math.floor(Math.random()*150)+55;
+			this.g = Math.floor(Math.random()*120)+55;
+			this.b = Math.floor(Math.random()*120)+55;
 			this.a = .1;
 			this.size = Math.floor(Math.random()*220);
 			this.speed = Math.random()*2+1;
@@ -376,6 +421,19 @@ canvas
 		return Math.sqrt( a*a + b*b );
 	}
 
+	function FlashScore ( s, x, y, r, g, b )
+	{
+		if ( this.dead == 1 ) { return; }
+		this.s = s;
+		this.x = x;
+		this.y = y;
+		this.a = 100;
+		this.r = r;
+		this.g = g;
+		this.b = b;
+		this.dead = 0;
+		S.flashScores.push ( this );
+	}
 
 </script>
 </body>
