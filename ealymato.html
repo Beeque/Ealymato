@@ -1,0 +1,383 @@
+<html><head>
+<style>
+body
+{
+	margin: 16px;
+	background-color: #1a1a1a;
+}
+
+div
+{
+	font-size: 12px;
+	color: #669966;
+	font-family: "Tahoma";
+}
+canvas
+{
+	# border: 8px solid #121212;
+}
+</style>
+</head>
+<body>
+<div id="out"></div>
+<canvas id="cnvs" width=640 height=640></canvas><br>
+<canvas id="cnvs2" width=640 height=64></canvas><br>
+<canvas id="cnvs3" width=640 height=256></canvas>
+<script>
+
+	// walls
+	// bg moving opposite of worm
+
+	let S = new Snaek();
+	let D = document.getElementById("out");
+
+	let c = document.getElementById("cnvs").getContext('2d');
+	let c2 = document.getElementById("cnvs2").getContext('2d');
+	let c3 = document.getElementById("cnvs3").getContext('2d');
+
+	c.font="32px consolas";
+	c2.font="16px consolas";
+	c3.font="18px consolas";
+
+	c3.fillStyle = 'rgba(35,35,35,1)';
+	c3.fillRect(0, 0, 640, 256);
+
+	c3.fillStyle = 'rgba(0,150,150,1)';
+	c3.fillText("EALYMATO 1.0",15,30);
+	c3.fillText("Steering: Arrow left/right",310,30);
+	c3.fillText("   Boost: Arrow up",310,50);
+	c3.fillText("   Space: (un)Pause",310,70);
+	c3.fillText("Collect black dots WITH BOOST for the score!",110,120);
+	c3.fillText("      Watch out for RED growing thing!",110,150);
+	c3.fillText(" Collect YELLOW dots for the boost energy!",110,180);
+
+
+
+	function gameInterval()
+	{
+		if ( S.autoPause == 0 )
+		{
+			if ( S.wave > 18.2 )
+			{
+				S.paused = 1;
+				S.autoPause = 1;
+				c.fillText("            ** PAUSED **",0,215);
+			}
+		}
+		if ( S.paused == 1 ) { return; }
+		if ( S.invert == -1 )
+		{
+			--S.invertTime;
+			if ( S.invertTime < 0 )
+			{
+				S.invertTime = 500;
+				S.invert = 1;
+			}
+		}
+
+		S.angle += S.turn * 4 * S.invert;
+		S.wave = S.wave + .3;
+		S.angle = S.angle + Math.cos(S.wave)*3;
+		if ( S.wave > 30 )
+		{
+			S.health = S.health - .3;
+		}
+
+		if ( S.health < 0 )
+		{
+			S.health = 0;
+			++S.endIsNear;
+		}
+
+		if ( S.endIsNear == 1 )
+		{
+			S.spawns.push( new Spawn(1) );
+		}
+
+
+		if ( S.angle < 0 ) { S.angle = 359; }
+		if ( S.angle > 359 ) { S.angle = 0; }
+
+		S.dx = Math.floor( 100 * Math.sin(Math.PI * 2 * S.angle / 360)) / 100 * S.speed;
+		S.dy = Math.floor( 100 * Math.cos(Math.PI * 2 * S.angle / 360)) / 100 * S.speed;
+
+		S.x = S.x + S.dx;
+		S.y = S.y + S.dy;
+
+		if ( S.x < 0 ) { S.x = 640; }
+		if ( S.x > 640 ) { S.x = 0; }
+
+		if ( S.y < 0 ) { S.y = 640; }
+		if ( S.y > 640 ) { S.y = 0; }
+
+		if ( S.energy < S.maxEnergy && S.boost == 0 ) { S.regen += 1; }
+		if ( S.regen > 20 ) { S.regen = 0; ++S.energy; }
+		if ( S.boost && S.energy > 0 ) { --S.energy; }
+		if ( S.energy > 0 && S.boost == 1 ) { S.speed = S.maxSpeed; }
+		if ( S.energy == 0 ) { S.boost = 0; }
+
+		if ( S.boost == 0 && S.speed > 1 )
+		{
+			S.speed = S.speed / 1.01;
+			if ( S.speed < S.minSpeed ) { S.speed = S.minSpeed; }
+		}
+
+
+		// background
+
+		var red = 0;
+		if ( S.endIsNear > 0 )
+		{
+			red += Math.cos( S.wave / 3 ) * 80+80;
+		}
+
+		c.fillStyle = 'rgba(' + red + ',0,0,.1)';
+		c.fillRect(0, 0, 640, 640);
+
+
+		for ( var n = 0; n < 50; ++n )
+		{
+			let B = S.bgblobs[n];
+
+			B.x = B.x - S.dx + B.speed * (S.boost + 1) * S.invert;
+			B.y = B.y - S.dy + B.speed * (S.boost + 1) * S.invert;
+
+			if ( B.x < -100 ) { B.x = 700; }
+			if ( B.x > 700 ) { B.x = -100; }
+
+			if ( B.y < -100 ) { B.y = 700; }
+			if ( B.y > 700 ) { B.y = -100; }
+
+			c.fillStyle = 'rgba('+B.r+','+B.g+','+B.b+','+B.a+')';
+			c.beginPath();
+			c.arc( B.x, B.y, B.size, 0, 2 * Math.PI);
+			c.fill();
+		}		
+
+		if ( S.invert == -1 )
+		{
+			c.fillStyle = 'rgba(0,0,0,1)';
+			c.fillText("       INVERSE STEERING " + S.invertTime/100,0,200);
+		}
+
+		c2.fillStyle = 'rgba(15,15,15,1)';
+		c2.fillRect(0, 0, 640, 64);
+
+
+		c2.fillStyle = 'rgba(115,155,155,1)';
+		c2.fillText("Score: " + Math.floor( S.score ),10,22);
+		c2.fillText("Health:",240,22);
+		c2.fillText("Energy:",240,48);
+
+		var hpr = 125 - S.health / 100 * 125
+		var hpg = S.health / 100 * 125
+
+		c2.fillStyle = 'rgba(' + hpr + ',' + hpg + ',0,1)';
+		c2.fillRect(310,9,Math.floor (S.health * 3.2),20);
+
+		c2.fillStyle = 'rgba(125,125,0,1)';
+		c2.fillRect(310,35,Math.floor (S.energy * 3.2),20);
+
+		for ( var n = S.blength; --n; n < 0 )
+		{
+			S.blobs[n] = S.blobs[n-1];
+		}
+
+		S.blobs[0] = new Blob( S.x , S.y );
+
+		for ( var n = 0; n < S.blength; ++n )
+		{
+			c.fillStyle = 'rgba(' + S.blobs[n].r + ',' + S.blobs[n].g + ',' + S.blobs[n].b + ',' + S.blobs[n].a + ')';
+			var divider = n / S.blength;
+			var size = S.maxSize - S.maxSize * divider;
+			c.beginPath();
+			c.arc( S.blobs[n].x, S.blobs[n].y, size, 0, 2 * Math.PI);
+			c.fill();
+		}
+
+		S.spawns.forEach(e => 
+		{
+			if ( e.dead == 0 )
+			{
+				if ( e.type == "bad" ) { e.s += .1; }
+				if ( e.s > 150 ) { S.score += 500; e.dead = 1; }
+				var pulse = Math.floor(Math.cos(S.wave+e.n)*3);
+				var yoff = Math.floor(Math.cos((S.wave+e.n)/10)*30);
+				c.fillStyle = 'rgba(' + e.r + ',' + e.g + ',' + e.b + ',' + e.a + ')';
+				c.beginPath();
+				c.arc( e.x, e.y + yoff, e.s + pulse, 0, 2 * Math.PI);
+				c.fill();
+
+				e.dist = CalcDistance ( e.x, e.y, S.blobs[0].x, S.blobs[0].y, yoff );
+
+				if ( e.dist < 35 + e.s )
+				{
+					e.dead = 1;
+					S.blength += 1;
+					S.maxSize += .1;
+					if ( e.type == "good" )
+					{
+						S.score += S.boost * S.health * (S.energy / 100);
+						S.health = 100;
+						S.endIsNear = 0;
+
+						if ( e.extra == 5 )
+						{
+							S.invert = -1;
+						}
+					}
+					if ( e.type == "bad" ) { S.health -= e.s; S.score -= 100; }
+
+					if ( e.type == "energy" ) { S.energy = S.maxEnergy; }
+				}
+			}
+
+		});
+
+		--S.spawnInterval;
+		if ( S.spawnInterval < 0 )
+		{
+			S.spawns.push ( new Spawn() );
+			S.spawnInterval = S.spawnRate;
+		}
+
+//		D.innerText = JSON.stringify( S.invertTime );
+	}
+
+	function Snaek()
+	{
+		let self = this;
+		this.speed = 8;
+		this.minSpeed = this.speed;
+		this.maxSpeed = 16;
+		this.boost = 0;
+		this.health = 50;
+		this.energy = 10;
+		this.maxEnergy = 100;
+		this.maxSize = 25;
+		this.regen = 0;
+		this.angle = 45;
+		this.turn = 0;
+		this.blobs = [];
+		this.bgblobs = [];
+		this.blength = 10;
+		this.x = 0;
+		this.y = 0;
+		this.wave = 0;
+		this.score = 0;
+		this.endIsNear = 0;
+		this.paused = 0;
+		this.invert = 1;
+		this.invertTime = 500;
+		this.autoPause = 0;
+
+		this.spawns = [];
+		this.spawnRate = 180;
+		this.spawnInterval = this.spawnRate;
+
+		for ( var n=0; n<this.blength; ++n )
+		{
+			this.blobs.push ( new Blob() );
+		}
+
+		for ( var n=0; n<50; ++n )
+		{
+			this.bgblobs.push ( new Blob(0,0,1) );
+		}
+
+		this.interval = setInterval ( gameInterval, 20 );
+	}
+
+	document.addEventListener('keydown',(e) =>
+	{
+		if ( e.keyCode == 27 ) { clearInterval( S.interval ); }
+
+		if ( e.keyCode == 32 )
+		{
+			S.paused = 1 - S.paused;
+			if ( S.paused == 1 )
+			{
+				c.fillText("            ** PAUSED **",0,215);
+				S.autoPause = 1;
+			}
+		}
+		if ( e.keyCode == 37 ) { S.turn = 1; } 
+		if ( e.keyCode == 38 ) { S.boost = 1; }
+		if ( e.keyCode == 39 ) { S.turn = -1; }
+
+//		console.log ( e.keyCode );
+	});
+
+	document.addEventListener('keyup',(e) =>
+	{
+		if ( e.keyCode == 37 ) { S.turn = 0; } 
+		if ( e.keyCode == 38 ) { S.boost = 0; }
+		if ( e.keyCode == 39 ) { S.turn = 0; }
+
+//		console.log ( e.keyCode );
+	});
+
+	function Blob(x,y,s)
+	{
+		this.x = x;
+		this.y = y;
+		this.r = 0;
+		this.g = 0;
+		this.b = 0;
+		this.a = 1;
+
+		if ( s == 1 )
+		{
+			this.x = Math.floor(Math.random()*640);
+			this.y = Math.floor(Math.random()*640);
+			this.g = Math.floor(Math.random()*150)+55;
+			this.b = Math.floor(Math.random()*150)+55;
+			this.a = .1;
+			this.size = Math.floor(Math.random()*220);
+			this.speed = Math.random()*2+1;
+		}
+	}
+
+	function Spawn(r)
+	{
+		this.dead = 0;
+		this.n = Math.random() * 10;
+		if ( !r ) { r = Math.floor ( this.n ); }
+
+		this.x = Math.floor ( Math.random() * 500 ) + 70;
+		this.y = Math.floor ( Math.random() * 500 ) + 70;
+
+		if ( r < 8 )
+		{
+			this.type = "good";
+			this.r = 0; this.g = 0; this.b = 0; this.a = 1; this.s = 12;
+			this.extra = Math.floor(Math.random() * 50);
+		}
+
+		if ( r == 8 )
+		{
+			this.type = "energy";
+			this.r = 150; this.g = 150; this.b = 0; this.a = 1; this.s = 12;
+		}
+
+		if ( r == 9 )
+		{
+			this.type = "bad";
+			this.r = 150; this.g = 0; this.b = 0; this.a = 1; this.s = 24;
+		}
+
+//		console.log ( this );
+
+	}
+
+	function CalcDistance( x1, y1, x2, y2, yoff )
+	{
+		var a = x1 - x2;
+		var b = y1 + yoff - y2;
+		return Math.sqrt( a*a + b*b );
+	}
+
+
+</script>
+</body>
+</html>
